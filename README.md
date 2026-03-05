@@ -2,14 +2,14 @@
 
 A modernized I3D baseline implementation for **PyTorch 2.8**, with backward-compatible loading for two widely used community checkpoints:
 
-- `reference/pytorch-i3d` format (`Mixed_*`, `logits.*`)
-- `reference/kinetics_i3d_pytorch` format (`mixed_*`, `conv3d_0c_1x1.*`)
+- `pytorch-i3d` format (`Mixed_*`, `logits.*`) from this [repo](https://github.com/piergiaj/pytorch-i3d#)
+- `kinetics_i3d_pytorch` format (`mixed_*`, `conv3d_0c_1x1.*`) from this [repo](https://github.com/hassony2/kinetics_i3d_pytorch#)
 
 This repository focuses on model modernization and compatibility, not dataset-specific training pipelines.
 
 ## Scope (v1)
 
-- Canonical `InceptionI3d` model for PyTorch 2.8
+- Canonical `InceptionI3d` model for PyTorch 2.8 and newer
 - Legacy-compatible `I3D` wrapper (`forward -> (softmax, logits)`)
 - Unified checkpoint loader with format auto-detection and conversion
 - Numpy clip demo inference CLI
@@ -18,22 +18,22 @@ This repository focuses on model modernization and compatibility, not dataset-sp
 
 ## Install
 
-Use your existing conda environment (as requested in this project):
+Use your existing environment:
 
 ```bash
-conda run -n torch python -m pip install -e .
+pip install -e .
 ```
 
 Dev dependencies:
 
 ```bash
-conda run -n torch python -m pip install -e .[dev]
+pip install -e .[dev]
 ```
 
 Optional TensorFlow converter dependencies:
 
 ```bash
-conda run -n torch python -m pip install -e .[tf]
+pip install -e .[tf]
 ```
 
 ## Quick Start
