@@ -131,6 +131,15 @@ PYTHONPATH=src conda run -n torch python -m kinetics_i3d.cli.convert_tf_ckpt \
   --modality rgb
 ```
 
+Release artifact preparation (canonical checkpoint + sha256 + reports):
+
+```bash
+PYTHONPATH=src conda run -n torch python -m kinetics_i3d.cli.prepare_release \
+  --version-tag v0.1.0-beta.1 \
+  --source-checkpoint reference/kinetics_i3d_pytorch/model/model_rgb.pth \
+  --output-dir dist/release
+```
+
 ## Tests
 
 Run tests in the `torch` conda env:
@@ -150,3 +159,7 @@ Reference artifact path conventions for integration tests are documented in `tes
 ## Migration Guide
 
 See `docs/MIGRATION.md` for import/API mapping from legacy community repos.
+
+## Release Runbook
+
+See `docs/RELEASE.md` for the complete GitHub pre-release checklist and artifact workflow.
