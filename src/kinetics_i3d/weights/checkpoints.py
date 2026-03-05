@@ -34,8 +34,17 @@ def _unwrap_state_dict(obj: Any) -> dict[str, torch.Tensor]:
     return dict(state_dict)
 
 
-def detect_checkpoint_format(state_dict: Mapping[str, torch.Tensor]) -> str:
+def _strip_common_prefix(state_dict: Mapping[str, torch.Tensor], prefix: str) -> dict[str, torch.Tensor]:
     keys = list(state_dict.keys())
+    if keys and all(k.startswith(prefix) for k in keys):
+        prefix_len = len(prefix)
+        return {k[prefix_len:]: v for k, v in state_dict.items()}
+    return dict(state_dict)
+
+
+def detect_checkpoint_format(state_dict: Mapping[str, torch.Tensor]) -> str:
+    normalized_state_dict = _strip_common_prefix(state_dict, "backbone.")
+    keys = list(normalized_state_dict.keys())
     if any(k.startswith("mixed_") or k.startswith("conv3d_0c_1x1") for k in keys):
         return "kinetics_i3d"
     if any(k.startswith("Mixed_") or k.startswith("Conv3d_") or k.startswith("logits.") for k in keys):
@@ -99,6 +108,8 @@ def convert_state_dict(
 
     if src_format == "auto":
         src_format = detect_checkpoint_format(state_dict)
+
+    normalized_state_dict = _strip_common_prefix(state_dict, "backbone.")
     if dst_format == "auto":
         dst_format = "canonical"
 
@@ -108,13 +119,13 @@ def convert_state_dict(
         dst_format = "canonical"
 
     if src_format == dst_format:
-        return dict(state_dict)
+        return dict(normalized_state_dict)
 
     if src_format == "kinetics_i3d" and dst_format == "canonical":
-        return {_kinetics_to_canonical_key(k): v for k, v in state_dict.items()}
+        return {_kinetics_to_canonical_key(k): v for k, v in normalized_state_dict.items()}
 
     if src_format == "canonical" and dst_format == "kinetics_i3d":
-        return {_canonical_to_kinetics_key(k): v for k, v in state_dict.items()}
+        return {_canonical_to_kinetics_key(k): v for k, v in normalized_state_dict.items()}
 
     raise ValueError(f"Unsupported conversion path: {src_format} -> {dst_format}")
 
