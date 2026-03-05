@@ -1,51 +1,57 @@
 # Kinetics I3D for Modern PyTorch
 
-A modernized I3D baseline implementation for **PyTorch 2.8**, with backward-compatible loading for two widely used community checkpoints:
+A modern, integration-focused I3D implementation for PyTorch 2.8+, with backward-compatible loading for widely used legacy checkpoints.
 
-- `pytorch-i3d` format (`Mixed_*`, `logits.*`) from this [repo](https://github.com/piergiaj/pytorch-i3d#)
-- `kinetics_i3d_pytorch` format (`mixed_*`, `conv3d_0c_1x1.*`) from this [repo](https://github.com/hassony2/kinetics_i3d_pytorch#)
+## Why This Project
 
-This repository focuses on model modernization and integration-friendly library APIs, not dataset-specific training pipelines.
+The original I3D ecosystem is fragmented across older TensorFlow and early PyTorch codebases. This project provides a clean, reusable implementation that:
 
-## Scope (Phase 3)
+- works on modern PyTorch (`2.8+`)
+- keeps compatibility with legacy checkpoint formats
+- is easy to plug into existing training or inference pipelines
+- standardizes on a single canonical checkpoint format for new artifacts
 
-- Canonical `InceptionI3d` model for PyTorch 2.8 and newer
-- Legacy-compatible `I3D` wrapper (`forward -> (softmax, logits)`)
-- Integration-oriented API:
+## Project Goals
+
+- Preserve I3D behavior and checkpoint compatibility.
+- Provide pipeline-friendly library APIs (not a heavy framework).
+- Make release-ready canonical checkpoints reproducible and verifiable.
+
+## Key Features
+
+- Canonical `InceptionI3d` model for modern PyTorch.
+- Legacy-compatible `I3D` wrapper (`forward -> (softmax, logits)`).
+- Integration API:
   - `build_i3d(...)`
   - `load_weights(...)`
-  - `prepare_finetune(...)`
   - `forward_infer(...)`
+  - `prepare_finetune(...)`
   - `save_canonical_weights(...)`
-- Unified checkpoint loader with format compatibility + conversion
-- Single-file canonical weight default (`torch.save(state_dict, ...)`)
-- Numpy clip demo CLI (optional helper)
-- Optional TensorFlow checkpoint conversion CLI
-- Unit/parity/integration tests
+- Checkpoint compatibility:
+  - `pytorch-i3d` format (`Mixed_*`, `logits.*`)
+  - `kinetics_i3d_pytorch` format (`mixed_*`, `conv3d_0c_1x1.*`)
+  - canonical format (`InceptionI3d` state_dict)
+- Optional TensorFlow checkpoint conversion utility.
+- Release preparation utility for canonical weights + SHA256 + parity reports.
 
-## Install
+## Installation
 
-Use your existing environment:
+Python `>=3.9`
 
 ```bash
 pip install -e .
 ```
 
-Dev dependencies:
+Optional extras:
 
 ```bash
-pip install -e .[dev]
+pip install -e .[dev]   # tests
+pip install -e .[tf]    # optional TF conversion
 ```
 
-Optional TensorFlow converter dependencies:
+## Quick Start
 
-```bash
-pip install -e .[tf]
-```
-
-## Integration Quick Start
-
-### 1) Build + load
+### 1) Build model + load legacy/canonical weights
 
 ```python
 from kinetics_i3d import build_i3d, load_weights
@@ -60,20 +66,21 @@ report = load_weights(
 print(report.source_format, report.missing_keys, report.unexpected_keys)
 ```
 
-### 2) Unified inference output (pipeline-friendly)
+### 2) Unified inference outputs
 
 ```python
 import torch
 from kinetics_i3d import forward_infer
 
 x = torch.randn(1, 3, 16, 224, 224)
-out = forward_infer(model, x)
+out = forward_infer(model.eval(), x)
 print(out.logits_per_frame.shape, out.clip_logits.shape, out.clip_probs.shape)
 ```
 
-### 3) Finetune preparation (freeze backbone, train classifier head)
+### 3) Prepare finetuning (freeze backbone, train classifier head)
 
 ```python
+import torch
 from kinetics_i3d import prepare_finetune
 
 setup = prepare_finetune(model, freeze_strategy="logits")
@@ -88,31 +95,42 @@ from kinetics_i3d import save_canonical_weights
 save_canonical_weights(model, "/tmp/i3d_canonical.pt")
 ```
 
-### 5) Optional checkpoint conversion helper
+## Checkpoint Compatibility
 
-```python
-from kinetics_i3d import convert_checkpoint
+| Source format | `load_weights(..., format=...)` | Notes |
+|---|---|---|
+| `pytorch-i3d` | `auto` | Canonical-equivalent naming |
+| `kinetics_i3d_pytorch` | `auto` | Auto key remap to canonical |
+| canonical | `canonical` or `auto` | Recommended default for new checkpoints |
+| TensorFlow `model.ckpt` | optional converter | Use `kinetics_i3d.cli.convert_tf_ckpt` |
 
-convert_checkpoint(
-    "reference/kinetics_i3d_pytorch/model/model_rgb.pth",
-    "/tmp/model_rgb_canonical.pt",
-    src_format="kinetics_i3d",
-    dst_format="canonical",
-)
+## Release Assets (Current)
+
+Current pre-release:
+
+- Tag: `v0.1.0-beta.1`
+- Package version: `0.1.0b1`
+- Channel: GitHub pre-release only (no PyPI yet)
+
+Expected release artifacts:
+
+- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.pt`
+- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.sha256`
+- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1_report.md`
+- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1_report.json`
+
+You can generate these with:
+
+```bash
+PYTHONPATH=src conda run -n torch python -m kinetics_i3d.cli.prepare_release \
+  --version-tag v0.1.0-beta.1 \
+  --source-checkpoint reference/kinetics_i3d_pytorch/model/model_rgb.pth \
+  --output-dir dist/release
 ```
 
-## Checkpoint Compatibility Matrix
+## Optional CLI Helpers
 
-| Source checkpoint format | `load_weights(..., format=...)` | Notes |
-|---|---|---|
-| `pytorch-i3d` (`Mixed_*`) | Supported (`auto`) | Canonical-equivalent naming |
-| `kinetics_i3d_pytorch` (`mixed_*`) | Supported (`auto`) | Auto key remap to canonical |
-| Canonical (`InceptionI3d`) | Supported (`canonical` or `auto`) | Recommended default save format |
-| TensorFlow `model.ckpt` | Optional | Use TF converter CLI/API |
-
-## Optional CLI helpers
-
-Demo inference (numpy clip):
+Demo inference:
 
 ```bash
 PYTHONPATH=src conda run -n torch python -m kinetics_i3d.cli.demo_infer \
@@ -122,56 +140,34 @@ PYTHONPATH=src conda run -n torch python -m kinetics_i3d.cli.demo_infer \
   --top-k 5
 ```
 
-TensorFlow checkpoint conversion:
-
-```bash
-PYTHONPATH=src conda run -n torch python -m kinetics_i3d.cli.convert_tf_ckpt \
-  --tf-checkpoint reference/kinetics_i3d_pytorch/model/tf_rgb_imagenet/model.ckpt \
-  --dst /tmp/model_rgb_from_tf.pt \
-  --modality rgb
-```
-
-Release artifact preparation (canonical checkpoint + sha256 + reports):
-
-```bash
-PYTHONPATH=src conda run -n torch python -m kinetics_i3d.cli.prepare_release \
-  --version-tag v0.1.0-beta.1 \
-  --source-checkpoint reference/kinetics_i3d_pytorch/model/model_rgb.pth \
-  --output-dir dist/release
-```
-
-## Tests
-
-Run tests in the `torch` conda env:
+## Testing
 
 ```bash
 PYTHONPATH=src conda run -n torch python -m pytest -q
 ```
 
-Reference artifact path conventions for integration tests are documented in `tests/README.md`.
+## Scope / Non-Goals
 
-## Important Notes
+This repository intentionally does **not** include:
 
-- This repo does **not** commit large pretrained weight files.
-- This repo intentionally excludes multi-camera fusion and full training framework code.
-- Device policy is script/runtime-level (`--device`), not hardcoded into model definitions.
+- multi-camera fusion strategy implementations
+- dataset-specific full training frameworks
+- video decoding/data engineering pipelines
 
-## Migration Guide
+The focus is stable model code and integration APIs.
 
-See `docs/MIGRATION.md` for import/API mapping from legacy community repos.
+## Documentation
 
-## Release Runbook
+- Migration guide: `docs/MIGRATION.md`
+- Release runbook: `docs/RELEASE.md`
 
-See `docs/RELEASE.md` for the complete GitHub pre-release checklist and artifact workflow.
+## Acknowledgements
 
-## Current Pre-release
+This project builds on prior community efforts:
 
-- Release tag: `v0.1.0-beta.1`
-- Package version: `0.1.0b1`
-- Distribution channel: GitHub Pre-release only (no PyPI for now)
-- Canonical checkpoint source: `kinetics_i3d_pytorch/model_rgb.pth` (converted)
-- Expected release attachments:
-  - `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.pt`
-  - `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.sha256`
-  - `i3d_rgb_imagenet_canonical_v0.1.0-beta.1_report.md`
-  - `i3d_rgb_imagenet_canonical_v0.1.0-beta.1_report.json`
+- [piergiaj/pytorch-i3d](https://github.com/piergiaj/pytorch-i3d)
+- [hassony2/kinetics_i3d_pytorch](https://github.com/hassony2/kinetics_i3d_pytorch)
+
+## License
+
+MIT. See `LICENSE`.
