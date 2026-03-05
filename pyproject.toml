@@ -22,8 +22,12 @@ dev = [
   "pytest>=8.0"
 ]
 tf = [
-  "tensorflow>=1.15"
+  "tensorflow>=2.12"
 ]
+
+[project.scripts]
+i3d-demo-infer = "kinetics_i3d.cli.demo_infer:main"
+i3d-convert-tf = "kinetics_i3d.cli.convert_tf_ckpt:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
