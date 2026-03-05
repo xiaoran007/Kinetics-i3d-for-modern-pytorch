@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kinetics-i3d-modern"
-version = "0.1.0"
+version = "0.1.0b1"
 description = "Modern PyTorch 2.8 implementation of I3D with legacy checkpoint compatibility"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -28,6 +28,7 @@ tf = [
 [project.scripts]
 i3d-demo-infer = "kinetics_i3d.cli.demo_infer:main"
 i3d-convert-tf = "kinetics_i3d.cli.convert_tf_ckpt:main"
+i3d-prepare-release = "kinetics_i3d.cli.prepare_release:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
