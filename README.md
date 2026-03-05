@@ -7,7 +7,7 @@ A modernized I3D baseline implementation for **PyTorch 2.8**, with backward-comp
 
 This repository focuses on model modernization and integration-friendly library APIs, not dataset-specific training pipelines.
 
-## Scope (Phase 2)
+## Scope (Phase 3)
 
 - Canonical `InceptionI3d` model for PyTorch 2.8 and newer
 - Legacy-compatible `I3D` wrapper (`forward -> (softmax, logits)`)
@@ -163,3 +163,15 @@ See `docs/MIGRATION.md` for import/API mapping from legacy community repos.
 ## Release Runbook
 
 See `docs/RELEASE.md` for the complete GitHub pre-release checklist and artifact workflow.
+
+## Current Pre-release
+
+- Release tag: `v0.1.0-beta.1`
+- Package version: `0.1.0b1`
+- Distribution channel: GitHub Pre-release only (no PyPI for now)
+- Canonical checkpoint source: `kinetics_i3d_pytorch/model_rgb.pth` (converted)
+- Expected release attachments:
+  - `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.pt`
+  - `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.sha256`
+  - `i3d_rgb_imagenet_canonical_v0.1.0-beta.1_report.md`
+  - `i3d_rgb_imagenet_canonical_v0.1.0-beta.1_report.json`
