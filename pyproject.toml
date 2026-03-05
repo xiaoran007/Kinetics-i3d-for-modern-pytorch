@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kinetics-i3d-modern"
+version = "0.1.0"
+description = "Modern PyTorch 2.8 implementation of I3D with legacy checkpoint compatibility"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+  { name = "Kinetics-i3d-for-modern-pytorch contributors" }
+]
+dependencies = [
+  "torch>=2.8",
+  "numpy>=1.24"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0"
+]
+tf = [
+  "tensorflow>=1.15"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
