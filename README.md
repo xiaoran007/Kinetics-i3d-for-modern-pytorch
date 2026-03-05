@@ -36,7 +36,7 @@ The original I3D ecosystem is fragmented across older TensorFlow and early PyTor
 
 ## Installation
 
-Python `>=3.9`
+Requires Python `>=3.9`.
 
 ```bash
 pip install -e .
@@ -46,120 +46,147 @@ Optional extras:
 
 ```bash
 pip install -e .[dev]   # tests
-pip install -e .[tf]    # optional TF conversion
+pip install -e .[tf]    # optional TensorFlow checkpoint conversion
 ```
 
-## Quick Start
+## Get Pretrained Weights (Recommended)
 
-### 1) Build model + load legacy/canonical weights
+Use release assets (canonical format).
+
+### 1) Download from GitHub Release
+
+From release tag `v0.1.0-beta.1`, download:
+
+- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.pt`
+- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.sha256`
+
+
+### 2) Verify checksum
+
+```bash
+shasum -a 256 i3d_rgb_imagenet_canonical_v0.1.0-beta.1.pt
+cat i3d_rgb_imagenet_canonical_v0.1.0-beta.1.sha256
+```
+
+## Integration Guide
+
+### Input contract
+
+Model input is `torch.Tensor` in shape `(B, C, T, H, W)`.
+
+- RGB: `C=3`
+- Flow: `C=2`
+- Expected preprocessing is project/pipeline specific (sampling, resize/crop, normalization).
+
+### Inference integration
 
 ```python
-from kinetics_i3d import build_i3d, load_weights
+import torch
+from kinetics_i3d import build_i3d, load_weights, forward_infer
 
-model = build_i3d(num_classes=400, modality="rgb", legacy=False)
-report = load_weights(
+model = build_i3d(num_classes=400, modality="rgb", legacy=False).eval()
+load_weights(
     model,
-    "reference/kinetics_i3d_pytorch/model/model_rgb.pth",
-    format="auto",
+    checkpoint_path="/path/to/i3d_rgb_imagenet_canonical_v0.1.0-beta.1.pt",
+    format="canonical",
     strict=True,
 )
-print(report.source_format, report.missing_keys, report.unexpected_keys)
+
+# clip: (B, C, T, H, W)
+clip = torch.randn(1, 3, 16, 224, 224)
+out = forward_infer(model, clip)
+
+# pipeline-friendly outputs
+logits_per_frame = out.logits_per_frame   # (B, C, T')
+clip_logits = out.clip_logits              # (B, C)
+clip_probs = out.clip_probs                # (B, C)
 ```
 
-### 2) Unified inference outputs
+### Finetuning integration (freeze backbone, train classifier head)
 
 ```python
 import torch
-from kinetics_i3d import forward_infer
+from kinetics_i3d import build_i3d, load_weights, prepare_finetune
 
-x = torch.randn(1, 3, 16, 224, 224)
-out = forward_infer(model.eval(), x)
-print(out.logits_per_frame.shape, out.clip_logits.shape, out.clip_probs.shape)
-```
+num_classes = 2  # example: fall / non-fall
+model = build_i3d(num_classes=400, modality="rgb", legacy=False)
+load_weights(model, "/path/to/i3d_rgb_imagenet_canonical_v0.1.0-beta.1.pt", format="canonical", strict=True)
 
-### 3) Prepare finetuning (freeze backbone, train classifier head)
+# Replace classification head for your task
+model.replace_logits(num_classes)
 
-```python
-import torch
-from kinetics_i3d import prepare_finetune
-
+# Freeze backbone, train logits only
 setup = prepare_finetune(model, freeze_strategy="logits")
 optimizer = torch.optim.SGD(setup.param_groups, lr=1e-3, momentum=0.9)
 ```
 
-### 4) Save canonical single-file weights
+### Save your own canonical checkpoint
 
 ```python
 from kinetics_i3d import save_canonical_weights
 
-save_canonical_weights(model, "/tmp/i3d_canonical.pt")
+save_canonical_weights(model, "/path/to/my_i3d_checkpoint.pt")
 ```
 
-## Checkpoint Compatibility
+## API Summary
 
-| Source format | `load_weights(..., format=...)` | Notes |
-|---|---|---|
-| `pytorch-i3d` | `auto` | Canonical-equivalent naming |
-| `kinetics_i3d_pytorch` | `auto` | Auto key remap to canonical |
-| canonical | `canonical` or `auto` | Recommended default for new checkpoints |
-| TensorFlow `model.ckpt` | optional converter | Use `kinetics_i3d.cli.convert_tf_ckpt` |
+- `build_i3d(...)`
+- `load_weights(...)`
+- `forward_infer(...)`
+- `prepare_finetune(...)`
+- `save_canonical_weights(...)`
+- `convert_checkpoint(...)`
 
-## Release Assets (Current)
+## Legacy Checkpoint Compatibility (Optional)
 
-Current pre-release:
+If you already have older checkpoints, `load_weights(..., format="auto")` supports:
 
-- Tag: `v0.1.0-beta.1`
+- `pytorch-i3d` naming (`Mixed_*`, `logits.*`)
+- `kinetics_i3d_pytorch` naming (`mixed_*`, `conv3d_0c_1x1.*`)
+- canonical naming
+
+For migration to canonical files:
+
+```python
+from kinetics_i3d import convert_checkpoint
+
+convert_checkpoint(
+    src_checkpoint="/path/to/legacy_checkpoint.pt",
+    dst_checkpoint="/path/to/canonical_checkpoint.pt",
+    src_format="auto",
+    dst_format="canonical",
+)
+```
+
+## Current Release
+
+- Tag: `v0.1.0-beta.1` (pre-release)
 - Package version: `0.1.0b1`
-- Channel: GitHub pre-release only (no PyPI yet)
+- Scope: RGB imagenet canonical checkpoint release
+- Channel: GitHub release assets only (no PyPI yet)
 
-Expected release artifacts:
+## Development and Validation
 
-- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.pt`
-- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1.sha256`
-- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1_report.md`
-- `i3d_rgb_imagenet_canonical_v0.1.0-beta.1_report.json`
-
-You can generate these with:
+Run tests:
 
 ```bash
-PYTHONPATH=src conda run -n torch python -m kinetics_i3d.cli.prepare_release \
-  --version-tag v0.1.0-beta.1 \
-  --source-checkpoint reference/kinetics_i3d_pytorch/model/model_rgb.pth \
-  --output-dir dist/release
+PYTHONPATH=src python -m pytest -q
 ```
 
-## Optional CLI Helpers
+Release preparation docs and templates:
 
-Demo inference:
+- `docs/RELEASE.md`
+- `docs/releases/v0.1.0-beta.1.md`
 
-```bash
-PYTHONPATH=src conda run -n torch python -m kinetics_i3d.cli.demo_infer \
-  --weights reference/kinetics_i3d_pytorch/model/model_rgb.pth \
-  --input-npy reference/kinetics_i3d_pytorch/data/kinetic-samples/v_CricketShot_g04_c01_rgb.npy \
-  --labels reference/kinetics_i3d_pytorch/data/kinetic-samples/label_map.txt \
-  --top-k 5
-```
+## Non-goals
 
-## Testing
+This repository does not provide:
 
-```bash
-PYTHONPATH=src conda run -n torch python -m pytest -q
-```
+- full dataset/training framework
+- video decoding pipeline
+- multi-camera fusion implementation
 
-## Scope / Non-Goals
-
-This repository intentionally does **not** include:
-
-- multi-camera fusion strategy implementations
-- dataset-specific full training frameworks
-- video decoding/data engineering pipelines
-
-The focus is stable model code and integration APIs.
-
-## Documentation
-
-- Migration guide: `docs/MIGRATION.md`
-- Release runbook: `docs/RELEASE.md`
+It focuses on stable model code + integration APIs.
 
 ## Acknowledgements
 
