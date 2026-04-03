@@ -173,18 +173,12 @@ Run tests:
 PYTHONPATH=src python -m pytest -q
 ```
 
-Release preparation docs and templates:
-
-- `docs/RELEASE.md`
-- `docs/releases/v0.1.0-beta.1.md`
-
 ## Non-goals
 
 This repository does not provide:
 
 - full dataset/training framework
 - video decoding pipeline
-- multi-camera fusion implementation
 
 It focuses on stable model code + integration APIs.
 
